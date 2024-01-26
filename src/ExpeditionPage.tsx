@@ -1,31 +1,58 @@
 import './ExpeditionPage.scss';
 
 import { observer } from 'mobx-react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import ExpeditionItem from './ExpeditionItem';
 import { IFoundItem } from './models';
-import { data } from './fake-data';
 import { ExpeditionService } from './ExpeditionService';
 
 function ExpeditionsPage(): any {
   const service = new ExpeditionService();
   const [results, setResults] = useState<IFoundItem[]>([]);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
-    handleSearch();
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchInputRef.current) {
+      searchInputRef.current.value = searchParams.get('q') ?? '';
+      handleSearch(searchInputRef.current.value);
+    }
   }, []);
-  const handleSearch = async (event?: React.ChangeEvent<HTMLInputElement>) => {
-    service.query = event?.target.value ?? '';
+
+  /**
+   * @function updateURLParameter
+   * @description Updates the value of the "q" parameter in the URL search query without reloading the page.
+   * @param {string} query - The new value to set for the "q" parameter.
+   */
+  const updateURLParameter = (query: string) => {
+    let searchParams = new URLSearchParams(window.location.search);
+    query
+      ? searchParams.set('q', query)
+      : searchParams.delete('q');
+    window.history.pushState({}, '', '?' + searchParams.toString());
+  };
+
+
+  /**
+   * Handles the search functionality.
+   * @param {string} query - The search query.
+   * @returns {Promise<void>} - A promise that resolves when the search is complete.
+   */
+  const handleSearch = async (query: string) => {
+    service.query = query;
+    updateURLParameter(service.query);
     await service.request();
-    setResults(data.found);
     setResults(service.found);
   };
+
   return <div className="container d-flex flex-column gap-4">
 
     <div className="d-flex">
       <div className="input-group input-icon">
         <i className="fas fa-search"></i>
         <input type="text"
-               onChange={handleSearch}
+               ref={searchInputRef}
+               onChange={({ target: { value } }) => handleSearch(value)}
                className="form-control" placeholder="Buscar" aria-label="Buscar" aria-describedby="basic-addon1"></input>
       </div>
     </div>
